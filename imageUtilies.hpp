@@ -1,16 +1,12 @@
-// Simple TensorRT logger class
+// Image utilities
 
-#ifndef TRTLogger_hpp
-#define TRTLogger_hpp
+#ifndef imageUtilities_hpp
+#define imageUtilities_hpp
 
-#include "NvInfer.h"
 #include <iostream>
 
-class tensorRTLogger: public nvinfer1::ILogger {
-public:
-    void log(Severity severity, const char* msg) override {
-        std::cout << "TRT: " << msg << std::endl;
-    }
-};
+bool readPPMto(void* buffer) {
+    
+}
 
 #endif /* TRTLogger_hpp */
