@@ -52,6 +52,4 @@ bool writeBufferToPPM(const std::string &filePath, const char* buffer, const int
     return true;
 }
 
-
-
 #endif /* imageUtilities_hpp */
