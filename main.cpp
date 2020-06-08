@@ -84,11 +84,10 @@ public:
     
     // create the network, builder, network engine
     bool build() {
-        m_trtLogger.setVerboseLevel(4);
+        m_trtLogger.setVerboseLevel(3);
         auto builder = std::unique_ptr<nvinfer1::IBuilder, trtDeleter>(nvinfer1::createInferBuilder(m_trtLogger));
         if (!builder) return false;
         const auto explicitBatch = 1U <<static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
-        
         auto network = std::unique_ptr<nvinfer1::INetworkDefinition, trtDeleter>(builder->createNetworkV2(explicitBatch));
         if (!network) return false;
         auto config = std::unique_ptr<nvinfer1::IBuilderConfig, trtDeleter>(builder->createBuilderConfig());
@@ -97,7 +96,6 @@ public:
         if (!parser) return false;
         auto parsed = parser->parseFromFile(onnxFilePath.c_str(), 4);
         if (!parsed) return false;
-        m_trtLogger.log(nvinfer1::ILogger::Severity::kWARNING, "checkpoint");
         builder->setMaxBatchSize(batchSize);
         config->setMaxWorkspaceSize(16 * (1 << 20)); // 16 MB
         config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
@@ -109,7 +107,7 @@ public:
         if (!m_Engine) {return false;}
         assert(network->getNbInputs() == 1);
         m_InputDims = network->getInput(0)->getDimensions();
-        assert(m_InputDims.nbDims == 3);
+        assert(m_InputDims.nbDims == 4);
         return true;
     }
     
