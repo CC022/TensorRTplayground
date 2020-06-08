@@ -14,19 +14,19 @@ public:
         if (int(severity) <= verboseLevel) {
             switch (severity) {
                 case Severity::kINTERNAL_ERROR:
-                    std::cout << "\u001b[38;5;9TRTInternalError: ";
+                    std::cout << "\e[38;5;9mTRTInternalError: ";
                     break;
                 case Severity::kERROR:
-                    std::cout << "\u001b[38;5;9TRTError: ";
+                    std::cout << "\e[38;5;9mTRTError: ";
                     break;
                 case Severity::kWARNING:
-                    std::cout << "\u001b[38;5;11TRTWarning: ";
+                    std::cout << "\e[38;5;11mTRTWarning: ";
                     break;
                 default:
-                    std::cout << "\u001b[38;5;10TRT: ";
+                    std::cout << "\e[38;5;10mTRT: ";
                     break;
             }
-            std::cout << msg << "\u001b[0m\n";
+            std::cout << msg << "\e[0m\n";
         }
     }
     
