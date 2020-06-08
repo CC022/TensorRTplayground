@@ -11,6 +11,7 @@ public:
     void log(Severity severity, const char* msg) override {
         std::cout << "TRT: " << msg << std::endl;
     }
+    // NeoLoggerTest
 };
 
 #endif /* TRTLogger_hpp */
