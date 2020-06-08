@@ -5,8 +5,8 @@
 #include "NvInferRuntimeCommon.h"
 #include "NvCaffeParser.h"
 #include "NvInfer.h"
-
 #include "buffers.h"
+#include "TRTLogger.hpp"
 #include <cuda_runtime_api.h>
 
 // from samples common.h
@@ -61,13 +61,6 @@ struct trtDeleter {
     template <typename T>
     void operator()(T* object) const {
         if (object) {object->destroy();}
-    }
-};
-
-class tensorRTLogger: public nvinfer1::ILogger {
-public:
-    void log(Severity severity, const char* msg) override {
-        std::cout << "TRT: " << msg << std::endl;
     }
 };
 
