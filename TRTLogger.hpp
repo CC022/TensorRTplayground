@@ -11,22 +11,22 @@ class tensorRTLogger: public nvinfer1::ILogger {
     
 public:
     void log(Severity severity, const char* msg) override {
-        if (severity < verboseLevel) {
+        if (int(severity) < verboseLevel) {
             switch (severity) {
                 case Severity::kINTERNAL_ERROR:
-                    std::cerr << "\u001b[38;5;9TRTInternalError: ";
+                    std::cout << "\u001b[38;5;9TRTInternalError: ";
                     break;
                 case Severity::kERROR:
-                    std::cerr << "\u001b[38;5;9TRTError: ";
+                    std::cout << "\u001b[38;5;9TRTError: ";
                     break;
                 case Severity::kWARNING:
-                    std::cerr << "\u001b[38;5;11TRTWarning: ";
+                    std::cout << "\u001b[38;5;11TRTWarning: ";
                     break;
                 default:
-                    std::cerr << "\u001b[38;5;10TRT: ";
+                    std::cout << "\u001b[38;5;10TRT: ";
                     break;
             }
-            std::cerr << msg << "\u001b[0m\n";
+            std::cout << msg << "\u001b[0m\n";
         }
     }
 };
