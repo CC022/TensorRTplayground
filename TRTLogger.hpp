@@ -23,7 +23,7 @@ public:
                     std::cout << "\e[38;5;11mTRTWarning: ";
                     break;
                 default:
-                    std::cout << "\e[38;5;10mTRT: ";
+                    std::cout << "\e[38;5;156mTRT: ";
                     break;
             }
             std::cout << msg << "\e[0m\n";
