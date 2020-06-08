@@ -120,16 +120,11 @@ public:
         assert(inputTensorNames.size() == 1);
         if (!processInput(buffers, inputTensorNames[0], digit)) {return false;}
         cudaStream_t stream;
-        auto status = cudaStreamCreate(&stream);
-        if (status != 0) {std::cerr << "cudaStreamCreate failed\n"; return false;}
         buffers.copyInputToDeviceAsync(stream);
-        if (!context->enqueue(batchSize, buffers.getDeviceBindings().data(), stream, nullptr)) {
+        if (context->execute(batchSize, buffers.getDeviceBindings().data())) {
             return false;
         }
         buffers.copyOutputToHostAsync(stream);
-        cudaStreamSynchronize(stream);
-        cudaStreamDestroy(stream);
-        assert(outputTensorNames.size() == 1);
         bool outputCorrect = verifyOutput(buffers, outputTensorNames[0], digit);
         
         return outputCorrect;
