@@ -13,13 +13,13 @@ public:
     void log(Severity severity, const char* msg) override {
         if (severity < verboseLevel) {
             switch (severity) {
-                case kINTERNAL_ERROR:
+                case Severity::kINTERNAL_ERROR:
                     std::cerr << "\u001b[38;5;9TRTInternalError: ";
                     break;
-                case kERROR:
+                case Severity::kERROR:
                     std::cerr << "\u001b[38;5;9TRTError: ";
                     break;
-                case kWARNING:
+                case Severity::kWARNING:
                     std::cerr << "\u001b[38;5;11TRTWarning: ";
                     break;
                 default:
