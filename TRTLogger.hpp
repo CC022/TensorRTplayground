@@ -7,7 +7,7 @@
 #include <iostream>
 
 class tensorRTLogger: public nvinfer1::ILogger {
-    bool verboseLevel = 3;
+    int verboseLevel = 3;
     
 public:
     void log(Severity severity, const char* msg) override {
