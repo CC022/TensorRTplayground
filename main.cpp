@@ -95,8 +95,7 @@ public:
         if (!parser) return false;
         auto parsed = parser->parseFromFile(onnxFilePath.c_str(), 4);
         if (!parsed) return false;
-        
-        
+        m_trtLogger.log(nvinfer1::ILogger::Severity::kWARNING, "checkpoint");
         builder->setMaxBatchSize(batchSize);
         config->setMaxWorkspaceSize(16 * (1 << 20)); // 16 MB
         config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
