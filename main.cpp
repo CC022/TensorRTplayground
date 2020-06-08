@@ -203,6 +203,7 @@ bool myMNISTSample::verifyOutput(samplesCommon::BufferManager &buffers, const st
 
 int main(int argc, const char * argv[]) {
     myMNISTSample myMNISTSample;
+    myMNISTSample.m_trtLogger.setVerboseLevel(4);
     myMNISTSample.dataDir = "../data/mnist/";
     myMNISTSample.caffePrototxtFileName = "../data/mnist/mnist.prototxt";
     myMNISTSample.caffeWeightsFileName = "../data/mnist/mnist.caffemodel";

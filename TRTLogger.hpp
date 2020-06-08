@@ -11,7 +11,7 @@ class tensorRTLogger: public nvinfer1::ILogger {
     
 public:
     void log(Severity severity, const char* msg) override {
-        if (int(severity) < verboseLevel) {
+        if (int(severity) <= verboseLevel) {
             switch (severity) {
                 case Severity::kINTERNAL_ERROR:
                     std::cout << "\u001b[38;5;9TRTInternalError: ";
@@ -27,6 +27,14 @@ public:
                     break;
             }
             std::cout << msg << "\u001b[0m\n";
+        }
+    }
+    
+    void setVerboseLevel(int level) {
+        if (level >= 0 && level <= 4) {
+            verboseLevel = level;
+        } else {
+            std::cout << "setVerboseLevel: value out of range\n";
         }
     }
 };
