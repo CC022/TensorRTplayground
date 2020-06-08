@@ -88,6 +88,7 @@ public:
     
     // create the network, builder, network engine
     bool build() {
+        m_trtLogger.setVerboseLevel(4);
         auto builder = std::unique_ptr<nvinfer1::IBuilder, trtDeleter>(nvinfer1::createInferBuilder(m_trtLogger));
         if (!builder) return false;
         auto network = std::unique_ptr<nvinfer1::INetworkDefinition, trtDeleter>(builder->createNetworkV2(0U));
@@ -203,7 +204,6 @@ bool myMNISTSample::verifyOutput(samplesCommon::BufferManager &buffers, const st
 
 int main(int argc, const char * argv[]) {
     myMNISTSample myMNISTSample;
-    myMNISTSample.m_trtLogger.setVerboseLevel(4);
     myMNISTSample.dataDir = "../data/mnist/";
     myMNISTSample.caffePrototxtFileName = "../data/mnist/mnist.prototxt";
     myMNISTSample.caffeWeightsFileName = "../data/mnist/mnist.caffemodel";
