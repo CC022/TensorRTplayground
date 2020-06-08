@@ -5,8 +5,8 @@
 #include "NvInferRuntimeCommon.h"
 #include "NvCaffeParser.h"
 #include "NvInfer.h"
-
 #include "buffers.h"
+#include "TRTLogger.hpp"
 #include <cuda_runtime_api.h>
 
 // from samples common.h
@@ -64,13 +64,6 @@ struct trtDeleter {
     }
 };
 
-class tensorRTLogger: public nvinfer1::ILogger {
-public:
-    void log(Severity severity, const char* msg) override {
-        std::cout << "TRT: " << msg << std::endl;
-    }
-};
-
 class myMNISTSample {
     tensorRTLogger m_trtLogger = tensorRTLogger();
     std::shared_ptr<nvinfer1::ICudaEngine> m_Engine = nullptr;
@@ -95,6 +88,7 @@ public:
     
     // create the network, builder, network engine
     bool build() {
+        m_trtLogger.setVerboseLevel(4);
         auto builder = std::unique_ptr<nvinfer1::IBuilder, trtDeleter>(nvinfer1::createInferBuilder(m_trtLogger));
         if (!builder) return false;
         auto network = std::unique_ptr<nvinfer1::INetworkDefinition, trtDeleter>(builder->createNetworkV2(0U));
