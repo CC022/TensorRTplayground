@@ -2,6 +2,7 @@
 #include <vector>
 #include <numeric>
 #include <fstream>
+#include <thread>
 #include "NvInferRuntimeCommon.h"
 #include "NvOnnxParser.h"
 #include "NvInfer.h"
@@ -74,7 +75,7 @@ class myMNISTSample {
     nvinfer1::Dims m_InputDims;
     
     bool processInput(const samplesCommon::BufferManager &buffers, const std::string &inputTensorName, int inputFileIdx) const;
-    bool verifyOutput(samplesCommon::BufferManager &buffers, const std::string &outputTensorName, int groundTruthDigit) const;
+    bool verifyOutput(const samplesCommon::BufferManager &buffers, const std::string &outputTensorName, int groundTruthDigit) const;
     
 public:
     std::string dataDir; //!< Directory paths where sample data files are stored
@@ -94,12 +95,13 @@ public:
         if (!config) return false;
         auto parser = std::unique_ptr<nvonnxparser::IParser, trtDeleter>(nvonnxparser::createParser(*network, m_trtLogger));
         if (!parser) return false;
+        // construct Network
         auto parsed = parser->parseFromFile(onnxFilePath.c_str(), 4);
         if (!parsed) return false;
         builder->setMaxBatchSize(batchSize);
         config->setMaxWorkspaceSize(16 * (1 << 20)); // 16 MB
-        config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
-        config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
+        // config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
+        // config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
         if (int8) {config->setFlag(nvinfer1::BuilderFlag::kINT8);}
         if (fp16) {config->setFlag(nvinfer1::BuilderFlag::kFP16);}
         enableDLA2(builder.get(), config.get(), dlaCore);
@@ -118,13 +120,11 @@ public:
         if (!context) {return false;}
         int digit = 3;
         assert(inputTensorNames.size() == 1);
-        if (!processInput(buffers, inputTensorNames[0], digit)) {return false;}
-        cudaStream_t stream;
-        buffers.copyInputToDeviceAsync(stream);
-        if (context->execute(batchSize, buffers.getDeviceBindings().data())) {
-            return false;
-        }
-        buffers.copyOutputToHostAsync(stream);
+        if (!processInput(buffers, inputTensorNames[0], digit)) {return false;}        
+        buffers.copyInputToDevice();
+        bool status = context->executeV2(buffers.getDeviceBindings().data());
+        if (!status) return false;
+        buffers.copyOutputToHost();
         bool outputCorrect = verifyOutput(buffers, outputTensorNames[0], digit);
         
         return outputCorrect;
@@ -133,33 +133,38 @@ public:
 };
 
 bool myMNISTSample::processInput(const samplesCommon::BufferManager &buffers, const std::string &inputTensorName, int inputFileIdx) const {
-    const int inputH = m_InputDims.d[1];
-    const int inputW = m_InputDims.d[2];
+    const int inputH = m_InputDims.d[2];
+    const int inputW = m_InputDims.d[3];
     std::vector<uint8_t> fileData(inputH * inputW);
     readPGMFile(dataDir + std::to_string(inputFileIdx) + ".pgm", fileData.data(), inputH, inputW);
 
     std::cout << "Input image\n";
     for (int i=0; i<inputH*inputW; i++) {
-        std::cout << (" .:-=+*#%@"[fileData[i] / 26]) << (((i+1) % inputW) ? "" : "\n");
+        std::cerr << (" .:-=+*#%@"[fileData[i] / 26]) << (((i+1) % inputW) ? "" : "\n");
     }
     std::cout << std::endl;
-    
+
     float *hostInputBuffer = static_cast<float*>(buffers.getHostBuffer(inputTensorName));
     for (int i=0; i < inputH * inputW; i++) {
-        hostInputBuffer[i] = float(fileData[i]);
+        hostInputBuffer[i] = 1.0 - float(fileData[i] / 255.0);
     }
-    
     return true;
 }
 
-bool myMNISTSample::verifyOutput(samplesCommon::BufferManager &buffers, const std::string &outputTensorName, int groundTruthDigit) const {
-    const float* prob = static_cast<const float*>(buffers.getHostBuffer(outputTensorName));
-    
+bool myMNISTSample::verifyOutput(const samplesCommon::BufferManager &buffers, const std::string &outputTensorName, int groundTruthDigit) const {
+    float* prob = static_cast<float*>(buffers.getHostBuffer(outputTensorName));
     std::cout << "Output:\n";
     float val = 0;
     int idx = 0;
     const int DIGITS = 10;
+    // softmax
+    float sum = 0;
+    for (int i=00; i<DIGITS; i++) {
+        prob[i] = exp(prob[i]);
+        sum += prob[i];
+    }
     for (int i=0; i<DIGITS; i++) {
+        prob[i] = prob[i] / sum;
         if (val < prob[i]) {
             val = prob[i];
             idx = i;
