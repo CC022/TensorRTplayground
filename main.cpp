@@ -10,6 +10,8 @@
 #include "TRTLogger.hpp"
 #include <cuda_runtime_api.h>
 
+// TODO: yolo v3
+
 // from samples common.h
 inline void setAllTensorScales2(nvinfer1::INetworkDefinition* network, float inScales = 2.0f, float outScales = 4.0f) {
     for (int i=0; i < network->getNbLayers(); i++) {
