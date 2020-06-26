@@ -13,30 +13,6 @@
 // TODO: yolo v3
 
 // from samples common.h
-inline void setAllTensorScales2(nvinfer1::INetworkDefinition* network, float inScales = 2.0f, float outScales = 4.0f) {
-    for (int i=0; i < network->getNbLayers(); i++) {
-        auto layer = network->getLayer(i);
-        for (int j=0; j < layer->getNbInputs(); j++) { // ensure all inputs have a scale
-            nvinfer1::ITensor* input{layer->getInput(j)};
-            if (input != nullptr && !input->dynamicRangeIsSet()) { // optional inputs are from RNN
-                input->setDynamicRange(-inScales, inScales);
-            }
-        }
-    }
-    for (int i=0; i < network->getNbInputs(); i++) {
-        auto layer = network->getLayer(i);
-        for (int j=0; j < layer->getNbOutputs(); j++) {
-            nvinfer1::ITensor* output{layer->getOutput(j)};
-            if (output != nullptr && !output->dynamicRangeIsSet()) {
-                if (layer->getType() == nvinfer1::LayerType::kPOOLING) {
-                    output->setDynamicRange(-inScales, inScales); // pooling layer must have the same in/out scales
-                } else {
-                    output->setDynamicRange(-outScales, outScales);
-                }
-            }
-        }
-    }
-}
 inline void enableDLA2(nvinfer1::IBuilder* builder, nvinfer1::IBuilderConfig *config, int useDLACore, bool allowGPUFallback = true) {
     if (useDLACore >= 0) {
         if (builder->getNbDLACores() == 0) {
@@ -50,15 +26,6 @@ inline void enableDLA2(nvinfer1::IBuilder* builder, nvinfer1::IBuilderConfig *co
     config->setDLACore(useDLACore);
     config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
 }
-inline void readPGMFile2(const std::string &fileName, uint8_t *buffer, int inH, int inW) {
-    std::ifstream inFile(fileName, std::ifstream::binary);
-    assert(inFile.is_open() && "inFile open failed");
-    std::string magic, h, w, max;
-    inFile >> magic >> h >> w >> max;
-    inFile.seekg(1, inFile.cur);
-    inFile.read(reinterpret_cast<char*>(buffer), inH * inW);
-}
-
 
 struct trtDeleter {
     template <typename T>
@@ -101,7 +68,7 @@ public:
         auto parsed = parser->parseFromFile(onnxFilePath.c_str(), 4);
         if (!parsed) return false;
         builder->setMaxBatchSize(batchSize);
-        config->setMaxWorkspaceSize(16 * (1 << 20)); // 16 MB
+        config->setMaxWorkspaceSize(1 << 28); // 256 MB
         // config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
         // config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
         if (int8) {config->setFlag(nvinfer1::BuilderFlag::kINT8);}
@@ -122,7 +89,7 @@ public:
         if (!context) {return false;}
         int digit = 3;
         assert(inputTensorNames.size() == 1);
-        if (!processInput(buffers, inputTensorNames[0], digit)) {return false;}        
+        if (!processInput(buffers, inputTensorNames[0], digit)) {return false;}
         buffers.copyInputToDevice();
         bool status = context->executeV2(buffers.getDeviceBindings().data());
         if (!status) return false;
@@ -135,53 +102,22 @@ public:
 };
 
 bool myMNISTSample::processInput(const samplesCommon::BufferManager &buffers, const std::string &inputTensorName, int inputFileIdx) const {
-    const int inputH = m_InputDims.d[2];
-    const int inputW = m_InputDims.d[3];
-    std::vector<uint8_t> fileData(inputH * inputW);
-    readPGMFile(dataDir + std::to_string(inputFileIdx) + ".pgm", fileData.data(), inputH, inputW);
 
-    std::cout << "Input image\n";
-    for (int i=0; i<inputH*inputW; i++) {
-        std::cerr << (" .:-=+*#%@"[fileData[i] / 26]) << (((i+1) % inputW) ? "" : "\n");
-    }
-    std::cout << std::endl;
-
-    float *hostInputBuffer = static_cast<float*>(buffers.getHostBuffer(inputTensorName));
-    for (int i=0; i < inputH * inputW; i++) {
-        hostInputBuffer[i] = 1.0 - float(fileData[i] / 255.0);
-    }
     return true;
 }
 
 bool myMNISTSample::verifyOutput(const samplesCommon::BufferManager &buffers, const std::string &outputTensorName, int groundTruthDigit) const {
-    float* prob = static_cast<float*>(buffers.getHostBuffer(outputTensorName));
-    std::cout << "Output:\n";
-    float val = 0;
-    int idx = 0;
-    const int DIGITS = 10;
-    // softmax
-    float sum = 0;
-    for (int i=00; i<DIGITS; i++) {
-        prob[i] = exp(prob[i]);
-        sum += prob[i];
-    }
-    for (int i=0; i<DIGITS; i++) {
-        prob[i] = prob[i] / sum;
-        if (val < prob[i]) {
-            val = prob[i];
-            idx = i;
-        }
-        std::cout << i << ": " << std::string(int(std::floor(prob[i] * 10 + 0.5f)), '*') << "\n";
-    }
-    return (idx == groundTruthDigit);
+    return false;
 }
 
 int main(int argc, const char * argv[]) {
     myMNISTSample myMNISTSample;
-    myMNISTSample.dataDir = "../data/mnist/";
-    myMNISTSample.onnxFilePath = "../data/mnist/mnist.onnx";
-    myMNISTSample.inputTensorNames.push_back("Input3");
-    myMNISTSample.outputTensorNames.push_back("Plus214_Output_0");
+    myMNISTSample.dataDir = "../data/yolo/";
+    myMNISTSample.onnxFilePath = "yolov3.onnx";
+    myMNISTSample.inputTensorNames.push_back("000_net");
+    myMNISTSample.outputTensorNames.push_back("082_convolutional");
+    myMNISTSample.outputTensorNames.push_back("094_convolutional");
+    myMNISTSample.outputTensorNames.push_back("106_convolutional");
     
     if (!myMNISTSample.build()) {std::cout << "sample build failed.\n";}
     if (!myMNISTSample.infer()) {std::cout << "sample infer failed.\n";}
