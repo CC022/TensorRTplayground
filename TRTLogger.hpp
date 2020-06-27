@@ -37,6 +37,14 @@ public:
             std::cout << "setVerboseLevel: value out of range\n";
         }
     }
+    
+    void printDims(nvinfer1::Dims Dims) {
+        std::cout << "Dims: ["
+        for (int i=0; i<Dims.nbDims; i++) {
+            std::cout << Dims.d[i] << ", ";
+        }
+        std::cout << std::endl;
+    }
 };
 
 #endif /* TRTLogger_hpp */

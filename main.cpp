@@ -11,28 +11,10 @@
 #include <cuda_runtime_api.h>
 
 // TODO: yolo v3
-// Git test
-
-// from samples common.h
-inline void enableDLA2(nvinfer1::IBuilder* builder, nvinfer1::IBuilderConfig *config, int useDLACore, bool allowGPUFallback = true) {
-    if (useDLACore >= 0) {
-        if (builder->getNbDLACores() == 0) {
-            std::cerr << "Error: trying to use DLA core " << useDLACore << " on a platform with no DLA core\n";
-            assert(false);
-        }
-    }
-    if (allowGPUFallback) {config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);}
-    if (!config->getFlag(nvinfer1::BuilderFlag::kINT8)) {config->setFlag(nvinfer1::BuilderFlag::kFP16);}
-    config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
-    config->setDLACore(useDLACore);
-    config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
-}
 
 struct trtDeleter {
     template <typename T>
-    void operator()(T* object) const {
-        if (object) {object->destroy();}
-    }
+    void operator()(T* object) const {if (object) {object->destroy();}}
 };
 
 class myMNISTSample {
@@ -74,7 +56,8 @@ public:
         // config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
         if (int8) {config->setFlag(nvinfer1::BuilderFlag::kINT8);}
         if (fp16) {config->setFlag(nvinfer1::BuilderFlag::kFP16);}
-        enableDLA2(builder.get(), config.get(), dlaCore);
+//        enableDLA2(builder.get(), config.get(), dlaCore);
+        m_trtLogger.printDims(network->getInput(0)->getDimensions());
         m_Engine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildEngineWithConfig(*network, *config), trtDeleter());
         if (!m_Engine) {return false;}
         assert(network->getNbInputs() == 1);
@@ -103,7 +86,7 @@ public:
 };
 
 bool myMNISTSample::processInput(const samplesCommon::BufferManager &buffers, const std::string &inputTensorName, int inputFileIdx) const {
-
+    
     return true;
 }
 
@@ -121,6 +104,8 @@ int main(int argc, const char * argv[]) {
     myMNISTSample.outputTensorNames.push_back("106_convolutional");
     
     if (!myMNISTSample.build()) {std::cout << "sample build failed.\n";}
+    // preprocess image
     if (!myMNISTSample.infer()) {std::cout << "sample infer failed.\n";}
+    // postprocess image
     return 0;
 }
