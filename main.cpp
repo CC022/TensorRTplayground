@@ -8,6 +8,7 @@
 #include "NvOnnxParser.h"
 #include "NvInfer.h"
 #include "buffers.h"
+#include "common.h"
 #include "TRTLogger.hpp"
 #include <cuda_runtime_api.h>
 
@@ -18,15 +19,14 @@ struct trtDeleter {
     void operator()(T* object) const {if (object) {object->destroy();}}
 };
 
-class myMNISTSample {
+class myYoloSample {
     int batchSize = 1; // num of inputs in a batch
     int dlaCore = -1;
     bool int8 = false;
     bool fp16 = false;
     nvinfer1::Dims m_InputDims;
-    
-    bool processInput(const samplesCommon::BufferManager &buffers, const std::string &inputTensorName, int inputFileIdx) const;
-    bool verifyOutput(const samplesCommon::BufferManager &buffers, const std::string &outputTensorName, int groundTruthDigit) const;
+    bool processInput(const samplesCommon::BufferManager &buffers, const std::string &inputPPMfile) const;
+    bool verifyOutput(const samplesCommon::BufferManager &buffers, const std::string &outputPPMFile) const;
     
 public:
     tensorRTLogger m_trtLogger = tensorRTLogger();
@@ -52,16 +52,16 @@ public:
         auto parsed = parser->parseFromFile(onnxFilePath.c_str(), 4);
         if (!parsed) return false;
         builder->setMaxBatchSize(batchSize);
-        config->setMaxWorkspaceSize(1 << 28); // 256 MB
+        config->setMaxWorkspaceSize(1 << 29); // 512 MB
         // config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
         // config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
         if (int8) {config->setFlag(nvinfer1::BuilderFlag::kINT8);}
         if (fp16) {config->setFlag(nvinfer1::BuilderFlag::kFP16);}
-//        enableDLA2(builder.get(), config.get(), dlaCore);
+        //        enableDLA2(builder.get(), config.get(), dlaCore);
         m_trtLogger.printDims(network->getInput(0)->getDimensions());
         network->getInput(0)->setDimensions(nvinfer1::Dims{4,1,3,608,608});
         m_trtLogger.printDims(network->getInput(0)->getDimensions());
-
+        
         m_Engine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildEngineWithConfig(*network, *config), trtDeleter());
         if (!m_Engine) {return false;}
         assert(network->getNbInputs() == 1);
@@ -72,17 +72,16 @@ public:
     
     bool infer() {
         samplesCommon::BufferManager buffers(m_Engine, batchSize);
-        
         auto context = std::unique_ptr<nvinfer1::IExecutionContext, trtDeleter>(m_Engine->createExecutionContext());
         if (!context) {return false;}
         assert(inputTensorNames.size() == 1);
-        // TODO: process input and put into buffer
+        processInput(buffers, "road0.ppm");
         buffers.copyInputToDevice();
         bool status = context->executeV2(buffers.getDeviceBindings().data());
         if (!status) return false;
         buffers.copyOutputToHost();
-//        bool outputCorrect = verifyOutput(buffers, outputTensorNames[0], digit);
-        
+
+        verifyOutput(buffers, "result.ppm");
         return true;
     }
     
@@ -105,32 +104,43 @@ public:
         return m_Engine != nullptr;
     }
     
-    
 };
 
-bool myMNISTSample::processInput(const samplesCommon::BufferManager &buffers, const std::string &inputTensorName, int inputFileIdx) const {
-    
+bool myYoloSample::processInput(const samplesCommon::BufferManager &buffers, const std::string &inputPPMfile) const {
+    const size_t H = 608;
+    const size_t W = 608;
+    samplesCommon::PPM<3, H, W> inputImage;
+    samplesCommon::readPPMFile(inputPPMfile, inputImage);
+    float* hostInputBuffer = static_cast<float*>(buffers.getHostBuffer(inputTensorNames[0]));
+    for (size_t channel = 0; channel < 3; channel++) {
+        for (size_t x = 0; x < H; x++) {
+            for (size_t y = 0; y < W; y++) {
+                hostInputBuffer[channel*H*W + y*W + x] = inputImage.buffer[(y*W+x)*3 + channel] / 255.0;
+            }
+        }
+    }
     return true;
 }
 
-bool myMNISTSample::verifyOutput(const samplesCommon::BufferManager &buffers, const std::string &outputTensorName, int groundTruthDigit) const {
+bool myYoloSample::verifyOutput(const samplesCommon::BufferManager &buffers, const std::string &outputPPMFile) const {
+    
+    
     return false;
 }
 
 int main(int argc, const char * argv[]) {
-    myMNISTSample myMNISTSample;
-    myMNISTSample.dataDir = "../data/yolo/";
-    myMNISTSample.onnxFilePath = "yolov3.onnx";
-    myMNISTSample.inputTensorNames.push_back("000_net");
-    myMNISTSample.outputTensorNames.push_back("082_convolutional");
-    myMNISTSample.outputTensorNames.push_back("094_convolutional");
-    myMNISTSample.outputTensorNames.push_back("106_convolutional");
+    myYoloSample myYoloSample;
+    myYoloSample.dataDir = "../data/yolo/";
+    myYoloSample.onnxFilePath = "yolov3.onnx";
+    myYoloSample.inputTensorNames.push_back("000_net");
+    myYoloSample.outputTensorNames.push_back("082_convolutional");
+    myYoloSample.outputTensorNames.push_back("094_convolutional");
+    myYoloSample.outputTensorNames.push_back("106_convolutional");
     
-    if (!myMNISTSample.build()) {std::cout << "sample build failed.\n";}
-//    if (!myMNISTSample.serializeEngine(myMNISTSample.m_Engine.get(), "yolov3Engine.trt")) {std::cout << "serialize engine failed.\n";};
-//    if (!myMNISTSample.loadEngine("yolov3Engine.trt")) {std::cout << "load engine failed.\n";}
-    // preprocess image
-     if (!myMNISTSample.infer()) {std::cout << "sample infer failed.\n";}
+    //    if (!myMNISTSample.build()) {std::cout << "sample build failed.\n";}
+    //    if (!myMNISTSample.serializeEngine(myMNISTSample.m_Engine.get(), "yolov3Engine.trt")) {std::cout << "serialize engine failed.\n";};
+    if (!myYoloSample.loadEngine("yolov3Engine.trt")) {std::cout << "load engine failed.\n";}
+    if (!myYoloSample.infer()) {std::cout << "sample infer failed.\n";}
     // postprocess image
     return 0;
 }

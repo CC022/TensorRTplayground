@@ -1,17 +1,13 @@
-// Image utilities
-
-#ifndef imageUtilities_hpp
-#define imageUtilities_hpp
-
+#pragma once
 #include <iostream>
 #include <string>
 #include <fstream>
 
-/** Read a RGB PPM file into a buffer using CHW memory layout.
+/** Read a RGB Plain PPM file into a buffer using CHW memory layout.
 The function will allocate the memory space for buffer, and the
 user needs to free the buffer.
 */
-bool readPPMToBuffer(const std::string &imagePath, char* &buffer) {
+bool readPlainPPMToBuffer(const std::string &imagePath, char* &buffer) {
     std::ifstream imageFile(imagePath);
     if (!imageFile.is_open()) {
         std::cerr << "failed to open image file: " << imagePath << "\n";
@@ -35,9 +31,9 @@ bool readPPMToBuffer(const std::string &imagePath, char* &buffer) {
     return true;
 }
 
-/** Write the content of a RGB planer uint8 image buffer to a PPM file.
+/** Write the content of a RGB planer uint8 image buffer to a Plain PPM file.
 */
-bool writeBufferToPPM(const std::string &filePath, const char* buffer, const int width, const int height) {
+bool writeBufferToPlainPPM(const std::string &filePath, const char* buffer, const int width, const int height) {
     std::ofstream imageFile(filePath);
     if (!imageFile.is_open()) {
         std::cerr << "Creating file " << filePath << " failed\n";
@@ -51,5 +47,3 @@ bool writeBufferToPPM(const std::string &filePath, const char* buffer, const int
     }
     return true;
 }
-
-#endif /* imageUtilities_hpp */
