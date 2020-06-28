@@ -122,8 +122,15 @@ bool myYoloSample::processInput(const samplesCommon::BufferManager &buffers, con
 }
 
 bool myYoloSample::verifyOutput(const samplesCommon::BufferManager &buffers, const std::string &outputPPMFile) const {
-    
-    
+    float *hostOutputBuffer0 = static_cast<float*>(buffers.getHostBuffer(outputTensorNames[0]));
+    float *hostOutputBuffer1 = static_cast<float*>(buffers.getHostBuffer(outputTensorNames[1]));
+    float *hostOutputBuffer2 = static_cast<float*>(buffers.getHostBuffer(outputTensorNames[2]));
+    ofstream outTensor0("082_convolutional");
+    ofstream outTensor1("094_convolutional");
+    ofstream outTensor2("106_convolutional");
+    outTensor0.write((const char*) hostOutputBuffer0, 1*255*19*19*sizeof(float));
+    outTensor1.write((const char*) hostOutputBuffer1, 1*255*38*38*sizeof(float));
+    outTensor2.write((const char*) hostOutputBuffer2, 1*255*76*76*sizeof(float));
     return false;
 }
 

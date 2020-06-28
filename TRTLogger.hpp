@@ -54,6 +54,23 @@ public:
                 std::cout << "Output ";
             }
             std::cout << "binding " << i << " " << engine->getBindingName(i) << " ";
+            switch (engine->getBindingDataType(i)) {
+                case DataType::kFLOAT:
+                    std::cout << "Float32 ";
+                    break;
+                case DataType::kHALF:
+                    std::cout << "Float16 ";
+                    break;
+                case DataType::kINT8:
+                    std::cout << "Int8 ";
+                    break;
+                case DataType::kINT32:
+                    std::cout << "Int32 ";
+                    break;
+                default:
+                    std::cout << "unknown data type! ";
+                    break;
+            }
             printDims(engine->getBindingDimensions(i));
         }
         std::cout << "Number of binding indices " << engine->getNbBindings() << std::endl;
