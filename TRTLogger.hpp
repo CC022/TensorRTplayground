@@ -46,13 +46,16 @@ public:
         std::cout << "]" << std::endl;
     }
     
-    void printTensorName(std::vector<std::string> names) {
-        for (std::string &name : names) {
-            std::cout << "Tensor name: " << name << std::endl;
-        }
-    }
-    
     void printEngine(const ICudaEngine *engine) {
+        for (int i=0; i < engine->getNbBindings(); i++) {
+            if (engine->bindingIsInput(i)) {
+                std::cout << "Input  ";
+            } else {
+                std::cout << "Output ";
+            }
+            std::cout << "binding " << i << " " << engine->getBindingName(i) << " ";
+            printDims(engine->getBindingDimensions(i));
+        }
         std::cout << "Number of binding indices " << engine->getNbBindings() << std::endl;
         std::cout << "Max Batch Size " << engine->getMaxBatchSize() << std::endl;
         std::cout << "Number of layers in the network " << engine->getNbLayers() << std::endl;

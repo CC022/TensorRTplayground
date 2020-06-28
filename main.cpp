@@ -80,7 +80,6 @@ public:
         bool status = context->executeV2(buffers.getDeviceBindings().data());
         if (!status) return false;
         buffers.copyOutputToHost();
-
         verifyOutput(buffers, "result.ppm");
         return true;
     }
@@ -140,6 +139,7 @@ int main(int argc, const char * argv[]) {
     //    if (!myMNISTSample.build()) {std::cout << "sample build failed.\n";}
     //    if (!myMNISTSample.serializeEngine(myMNISTSample.m_Engine.get(), "yolov3Engine.trt")) {std::cout << "serialize engine failed.\n";};
     if (!myYoloSample.loadEngine("yolov3Engine.trt")) {std::cout << "load engine failed.\n";}
+    myYoloSample.m_trtLogger.printEngine(myYoloSample.m_Engine.get());
     if (!myYoloSample.infer()) {std::cout << "sample infer failed.\n";}
     // postprocess image
     return 0;
