@@ -39,12 +39,27 @@ public:
     }
     
     void printDims(nvinfer1::Dims Dims) {
-        std::cout << "Dims: ["
+        std::cout << "Dims: [";
         for (int i=0; i<Dims.nbDims; i++) {
             std::cout << Dims.d[i] << ", ";
         }
-        std::cout << std::endl;
+        std::cout << "]" << std::endl;
     }
+    
+    void printTensorName(std::vector<std::string> names) {
+        for (std::string &name : names) {
+            std::cout << "Tensor name: " << name << std::endl;
+        }
+    }
+    
+    void printEngine(const ICudaEngine *engine) {
+        std::cout << "Number of binding indices " << engine->getNbBindings() << std::endl;
+        std::cout << "Max Batch Size " << engine->getMaxBatchSize() << std::endl;
+        std::cout << "Number of layers in the network " << engine->getNbLayers() << std::endl;
+        std::cout << "Device memory required by an execution context " << engine->getDeviceMemorySize() << std::endl;
+        std::cout << "Network name " << engine->getName() << std::endl;
+    }
+    
 };
 
 #endif /* TRTLogger_hpp */

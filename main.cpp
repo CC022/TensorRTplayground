@@ -2,6 +2,7 @@
 #include <vector>
 #include <numeric>
 #include <fstream>
+#include <experimental/filesystem>
 #include <thread>
 #include "NvInferRuntimeCommon.h"
 #include "NvOnnxParser.h"
@@ -18,8 +19,6 @@ struct trtDeleter {
 };
 
 class myMNISTSample {
-    tensorRTLogger m_trtLogger = tensorRTLogger();
-    std::shared_ptr<nvinfer1::ICudaEngine> m_Engine = nullptr;
     int batchSize = 1; // num of inputs in a batch
     int dlaCore = -1;
     bool int8 = false;
@@ -30,6 +29,8 @@ class myMNISTSample {
     bool verifyOutput(const samplesCommon::BufferManager &buffers, const std::string &outputTensorName, int groundTruthDigit) const;
     
 public:
+    tensorRTLogger m_trtLogger = tensorRTLogger();
+    std::shared_ptr<nvinfer1::ICudaEngine> m_Engine = nullptr;
     std::string dataDir; //!< Directory paths where sample data files are stored
     std::vector<std::string> inputTensorNames;
     std::vector<std::string> outputTensorNames;
@@ -58,6 +59,9 @@ public:
         if (fp16) {config->setFlag(nvinfer1::BuilderFlag::kFP16);}
 //        enableDLA2(builder.get(), config.get(), dlaCore);
         m_trtLogger.printDims(network->getInput(0)->getDimensions());
+        network->getInput(0)->setDimensions(nvinfer1::Dims{4,1,3,608,608});
+        m_trtLogger.printDims(network->getInput(0)->getDimensions());
+
         m_Engine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildEngineWithConfig(*network, *config), trtDeleter());
         if (!m_Engine) {return false;}
         assert(network->getNbInputs() == 1);
@@ -71,17 +75,36 @@ public:
         
         auto context = std::unique_ptr<nvinfer1::IExecutionContext, trtDeleter>(m_Engine->createExecutionContext());
         if (!context) {return false;}
-        int digit = 3;
         assert(inputTensorNames.size() == 1);
-        if (!processInput(buffers, inputTensorNames[0], digit)) {return false;}
+        // TODO: process input and put into buffer
         buffers.copyInputToDevice();
         bool status = context->executeV2(buffers.getDeviceBindings().data());
         if (!status) return false;
         buffers.copyOutputToHost();
-        bool outputCorrect = verifyOutput(buffers, outputTensorNames[0], digit);
+//        bool outputCorrect = verifyOutput(buffers, outputTensorNames[0], digit);
         
-        return outputCorrect;
+        return true;
     }
+    
+    bool serializeEngine(nvinfer1::ICudaEngine *engine, std::string filePath) {
+        auto serializedEngine = std::unique_ptr<IHostMemory, trtDeleter>(engine->serialize());
+        ofstream engineFile(filePath);
+        assert(engineFile.is_open());
+        engineFile.write((const char*) serializedEngine->data(), serializedEngine->size());
+        return !engineFile.fail();
+    }
+    
+    bool loadEngine(std::string filePath) {
+        auto runtime = std::unique_ptr<IRuntime, trtDeleter>(createInferRuntime(m_trtLogger));
+        ifstream engineFile(filePath);
+        assert(engineFile.is_open());
+        size_t fileSize = std::experimental::filesystem::file_size(filePath);
+        std::unique_ptr<char []> fileBuffer(new char[fileSize]);
+        engineFile.read(fileBuffer.get(), fileSize);
+        m_Engine = std::shared_ptr<nvinfer1::ICudaEngine>(runtime->deserializeCudaEngine(fileBuffer.get(), fileSize, nullptr), trtDeleter());
+        return m_Engine != nullptr;
+    }
+    
     
 };
 
@@ -104,8 +127,10 @@ int main(int argc, const char * argv[]) {
     myMNISTSample.outputTensorNames.push_back("106_convolutional");
     
     if (!myMNISTSample.build()) {std::cout << "sample build failed.\n";}
+//    if (!myMNISTSample.serializeEngine(myMNISTSample.m_Engine.get(), "yolov3Engine.trt")) {std::cout << "serialize engine failed.\n";};
+//    if (!myMNISTSample.loadEngine("yolov3Engine.trt")) {std::cout << "load engine failed.\n";}
     // preprocess image
-    if (!myMNISTSample.infer()) {std::cout << "sample infer failed.\n";}
+     if (!myMNISTSample.infer()) {std::cout << "sample infer failed.\n";}
     // postprocess image
     return 0;
 }
